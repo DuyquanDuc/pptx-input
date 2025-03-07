@@ -33,9 +33,9 @@ with gr.Blocks() as demo:
     with gr.Row():
         with gr.Column():
             file_output = gr.File()
-            upload_file = gr.UploadButton("Upload a Powerpoint File", icon=r"pptx_input\public\pptx_icon.png", type='filepath')
+            upload_file = gr.UploadButton("Upload a Powerpoint File", type='file')
             upload_file.upload(path_file, upload_file, file_output)
-            slide_select = gr.Dropdown(label="Categories",choices=["organization", "schedule", "use_case"], info="Select slides type to Process")
+            slide_select = gr.Dropdown(label="Categories",choices=["organization", "schedule", "use_case", "Person CV"], info="Select slides type to Process")
             extract_json = gr.Textbox(label="Extract fields", placeholder="Example: name, role, percent_allocate")
         with gr.Column():
             summary_output = gr.Textbox(label="Summary")

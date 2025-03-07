@@ -1,4 +1,4 @@
-from openai import AzureOpenAI
+from openai import AzureOpenAI, OpenAI
 import base64
 from utils import ExtractJSON, replace_newlines, ensure_single_value
 import instructor
@@ -8,13 +8,16 @@ from dotenv import load_dotenv
 
 # Load env variables
 load_dotenv('local.env')
-
+"""
 #Set up Azure client
 client = AzureOpenAI(
     api_key=os.getenv("AZURE_OPENAI_API_KEY"),  
     api_version="2024-07-01-preview",
     azure_endpoint=os.getenv("AZURE_OPENAI_ENDPOINT")
 )
+"""
+# Set up OAI client
+client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 #Response for each image
 def response(image_path):
@@ -36,7 +39,7 @@ def response(image_path):
                     {
                     "role": "user",
                     "content": [
-                        {"type": "text", "text": "Summarize the content of the image in 2 sentences. Pay attention to numbers, highlight or visualization."},
+                        {"type": "text", "text": "Summarize the content of the image in 2 sentences annote at the beginning of each with: New Slide. Pay attention to numbers, highlight or visualization."},
                         {
                         "type": "image_url",
                         "image_url": {
@@ -63,10 +66,8 @@ def compiling_agent(input):
     # Assuming `client.chat.completions.create` returns a complete response when not streaming
     response = client.chat.completions.create(
         model="gpt-4o-mini",
-        messages=[{"role": "system", "content": "You are a helpful assistant. Your job is to summarize the content provide."},
-                  {"role": "user", "content": f"""based on this information: "{input}"  + 
-                   summarize and aggregate the content and organize it so that it visually attractive. 
-                   The output should be a general summary of everything. """}
+        messages=[{"role": "system", "content": "You are a helpful assistant"},
+                  {"role": "user", "content": f"""based on this information: "{input}"  reformat the input so that it look nicer """}
                   ]
     )
     if response.choices and response.choices[0].message.content:
@@ -79,6 +80,9 @@ def parse_json(image_path: str, extract_fields, slide_class)-> ExtractJSON:
     """
     Sends an image and gets a response containing a list of objects.
     
+    Parameters:
+    - image_path: str: The path to the image file to be processed.
+    - extract_fields: List[str]: A list of keys (fields) to extract from the image.
     """
     # Reformat the image
     with open(image_path, "rb") as image_file:
@@ -96,18 +100,18 @@ def parse_json(image_path: str, extract_fields, slide_class)-> ExtractJSON:
     """
     # Constructing the prompt or message content based on the extract_fields
     extract_prompt = f"""
-    Please extract the following fields in a JSON data key-value format: {extract_fields}.
+    Please extract the following fields : {extract_fields} from the uploaded image in a JSON data key-value format.
     The data should be formatted into a structured JSON format, ensuring that 
     each key is clearly defined and that similar data is grouped together under appropriate categories. 
     The JSON should be concise and avoid any redundancy.
     """
     # Patch the OpenAI client
-    azure_client = instructor.from_openai(AzureOpenAI(api_key=os.getenv("AZURE_OPENAI_API_KEY"),  
+    azure_client = AzureOpenAI(api_key=os.getenv("AZURE_OPENAI_API_KEY"),  
     api_version="2024-07-01-preview",
     azure_endpoint=os.getenv("AZURE_OPENAI_ENDPOINT")
-    ))
-    # Assuming `instructor` is the correct client or replace it with the appropriate API call
-    response = azure_client.chat.completions.create(
+    )
+    # Client set up
+    response = instructor.from_openai(client).chat.completions.create(
         model="gpt-4o-mini",
         response_model=ExtractJSON,
         messages=[
